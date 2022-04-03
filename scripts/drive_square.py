@@ -24,7 +24,7 @@ class DriveSquare(object):
         # A callback function which makes the robot turn in the square, 
         # is called every time the robot traverses the length of one "side" 
         # of the square in its driving path
-        print('made into callback')
+
         # First stop the robot's forward motion if it is moving,
         # then initiate angular movement for turning to the right 
         self.movement.linear.x = 0
@@ -40,7 +40,6 @@ class DriveSquare(object):
 
         # Turn for that amount of time
         rospy.sleep(duration_to_turn)
-        print(duration_to_turn)
 
         # Stop moving in the angular direction, start moving forward again
         self.movement.angular.z = 0
@@ -53,7 +52,7 @@ class DriveSquare(object):
         time_before_turn = 5 # in seconds
         rospy.Timer(rospy.Duration(time_before_turn), self.turn_in_square)
         rospy.spin()
-        print("should not go here")
+
 if __name__ == '__main__':
     # instantiate the ROS node and run it
     node = DriveSquare()
