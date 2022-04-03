@@ -2,11 +2,11 @@
 
 ## Driving in a square
 
-# Description:
+### Description:
 This ROS node commands the Turtlebot3 robot to drive in a square path. In my approach
 I took advantage of timing to make the robot move forward and periodically turn 90 degrees up to four times in order to complete a square path. 
 
-# Code Explanation:
+### Code Explanation:
 The node is defined in the class `DriveSquare`, which contains the following functions:
 
 `__init__(self)`: the ROS node and the publisher to the /cmd_vel topic is initialized, along with an instance attribute containing a default Twist message specifying the linear and angular acceleration of the robot (set to 0 in the x, y, z directions).
@@ -15,9 +15,9 @@ The node is defined in the class `DriveSquare`, which contains the following fun
 
 `run(self)`: In this function, the `turn_in_square` callback function is run in a periodic way using the rospy.Timer() function, which specifies to the robot that it should run the callback after at a specified time interval. This cycle repeats until the user quits the program. 
 
-# Gif of movement:
+### Gif of movement:
 
-![](https://github.com/schang7/warmup_project/drive_square.GIF)
+![](https://github.com/schang7/warmup_project/blob/851ee79972db51cb5c71b61d9367554a4b457123/drive_square.GIF)
 
 ## Challenges
 Some challenges for this first benchmark was just figuring out how to use rospy.spin() and also keep the periodic turning callback function to keep it driving in a square path. I think reading up on how ROS runs nodes and learning about potential issues like race conditions helped in conceptualizing how to solve the problem.
