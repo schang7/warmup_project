@@ -17,7 +17,7 @@ The node is defined in the class `DriveSquare`, which contains the following fun
 
 # Gif of movement:
 
-![](https://github.com/adam-p/markdown-here/raw/master/src/common/images/icon48.png)
+![](https://github.com/schang7/warmup_project/drive_square.GIF)
 
 ## Challenges
 Some challenges for this first benchmark was just figuring out how to use rospy.spin() and also keep the periodic turning callback function to keep it driving in a square path. I think reading up on how ROS runs nodes and learning about potential issues like race conditions helped in conceptualizing how to solve the problem.
