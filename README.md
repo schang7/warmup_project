@@ -20,13 +20,13 @@ The node is defined in the class `DriveSquare`, which contains the following fun
 ![](https://github.com/schang7/warmup_project/blob/851ee79972db51cb5c71b61d9367554a4b457123/drive_square.GIF)
 
 ## Challenges
-Some challenges for this first benchmark was just figuring out how to use rospy.spin() and also keep the periodic turning callback function to keep it driving in a square path. I think reading up on how ROS runs nodes and learning about potential issues like race conditions helped in conceptualizing how to solve the problem.
+Some challenges for this first benchmark was just figuring out how to use rospy.spin() and also keep the periodic turning callback function running to have the robot continuously drive in a square path. I think reading up on how ROS runs nodes and learning about potential issues like race conditions helped me in conceptualizing how to solve these challenges.
 
 ## Future Work
 If I had more time I would like to set maybe different conditions (maybe based on user input when the program starts running) to specify in what direction we want the robot to drive in the square path. Would also like to experiment with the /odom topic as well.
 
 ## Takeaways
-Overall this first part of the project helped me get more comfortable with how to setup/run a ROS node and how to navigate the ROS wiki for any resources. It also gave me practice with object oriented programming in Python, which will help in future assignments. 
+Overall this first part of the project helped me get more comfortable with how to setup and run a ROS node and how to navigate the ROS wiki for any resources. It also gave me practice with object oriented programming in Python, which will help in future assignments. 
 
 
 
