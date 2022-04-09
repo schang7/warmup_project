@@ -36,7 +36,7 @@ class WallFollower(object):
         )
 
         # A default distance that the robot should keep from the wall
-        self.goal_following_dist = 0.5 # in meters
+        self.goal_following_dist = 0.25 # in meters
 
     def follow_wall(self, data):
         # Detect a wall within the range of the robot using the scan data from
@@ -120,7 +120,9 @@ class WallFollower(object):
                 print("went into smallest_dist")
                 self.movement.angular.z = angle_k * angle_error
              
-            # we're either away from a wall or pulling away from it entirely
+            # we're pulling away from a wall
+            elif smallest_distance > self.goal_following_dist and smallest_angle > 90:
+                self.movement.angular.z = angle_k * angle_error    
             else:
                 self.movement.angular.z = 0 
 
