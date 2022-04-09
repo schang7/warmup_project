@@ -36,7 +36,7 @@ class PersonFollower(object):
         )
 
         # A default distance that the robot should keep from the person
-        self.goal_following_dist = 0.001 # in meters
+        self.goal_following_dist = 0.5 # in meters
 
     def follow_person(self, data):
         # Detect a person within the range of the robot using the scan data from
@@ -60,7 +60,7 @@ class PersonFollower(object):
         nonzero_distances = np.logical_and(np.isfinite(ranges), ranges > 0)
         # Checking if everything in the LiDAR scan range is equal to inf or 0 
         # (in simulation)
-        print(sum(nonzero_distances))
+        print(nonzero_distances)
         if sum(nonzero_distances) == 0:
             print('nothing is in range')
             # If so, then just stay still
@@ -69,21 +69,37 @@ class PersonFollower(object):
         else:
             # Let's tile up the set of angles into sets of 20 degrees, so that we are not basing our angular direction command
             # on a single measurement
-            ranges[ranges == np.inf] = 0 
+            ranges[ranges == np.inf] = np.nan
             tile_up_by = int(20) # in degrees
             # goal angle is halfway in each pie slice
             possible_goals = [0, 20, 40, 60, 80, 100, 120, 140, 160, 180, -160, -140, -120, -100, -80, -60, -40, -20]
-            means_for_slice = []
+            slice_means = []
+            num_slice_elements = []
+
             print(len(ranges))
             for s in range(int(len(ranges)/tile_up_by)):
-                offset = tile_up_by/2
                 if s == 0:
-                    slice_mean = np.mean(np.append(ranges[:int((tile_up_by/2))],ranges[:int((-tile_up_by/2))]))
+                    first_half = slice(0,int(tile_up_by/2))
+                    second_half = slice(int(-tile_up_by/2),0)
+                    elements_in_slice = sum(nonzero_distances[:int(tile_up_by/2)]) + sum(nonzero_distances[-1*int(tile_up_by/2):])
+                    
+                    slice_mean = np.nanmean(np.append(ranges[:int((tile_up_by/2))],ranges[:int((-tile_up_by/2))]))
+                    
                 else:
-                    slice_mean = np.mean(ranges[int(offset + ((s-1)*tile_up_by)) : int(offset + (s*tile_up_by))])
-                means_for_slice.append(slice_mean)
-            slice_with_most_detection = np.argmax(means_for_slice)
-            smallest_distance = np.max(means_for_slice)
+                    offset = tile_up_by/2
+                    slice_idx = slice(int(offset + ((s-1)*tile_up_by)), int(offset + (s*tile_up_by)))
+                    elements_in_slice = sum(nonzero_distances[slice_idx])
+                    slice_mean = np.nanmean(ranges[slice_idx])
+                    
+
+                num_slice_elements.append(elements_in_slice)
+                slice_means.append(slice_mean)
+            print(num_slice_elements)
+            print(slice_means)
+            slice_with_most_detection = np.argmax(num_slice_elements)
+            # this should be changed to one that has the most nonzero values
+            smallest_distance = slice_means[slice_with_most_detection]
+            # this should be the mean for that given slice, but increase the k-value for the proportional control
             smallest_angle = possible_goals[slice_with_most_detection]
             # 10 to -10
             # -10 to -30, +10 to +30
@@ -105,14 +121,6 @@ class PersonFollower(object):
             # (to reduce the chance of noise impacting the angular movement decision)
             angle_error = smallest_angle
 
-            #if smallest_angle > 20 and smallest_angle < 340: # first check if it's not already at destination
-            #    print('should you be going into this condition? RIP')
-            #    epsilon_angle = 5
-            #    if smallest_angle < 180 - epsilon_angle or smallest_angle > 180 + epsilon_angle:
-            #        print('do you ever go into this condition?')
-            #        angle_error = 180 - smallest_angle
-            # THe largest that this angle difference could be is (180 + epsilon_angle)
-            # THe smallest that it could be is 1 or zero, so we want to set a small k-value
             angle_k = 0.005
                         
             self.movement.angular.z = angle_k * angle_error
@@ -124,25 +132,6 @@ class PersonFollower(object):
             self.movement.linear.x = dist_k * dist_error
             print("linear move: " + str(self.movement.linear.x)) 
         self.movement_pub.publish(self.movement)
-
-
-            # switch orientation towards there (angular velocity)
-                # GOAL: the new angle
-                # CURRENT POSITION: where the bot is currently facing forward
-                # ERROR: the difference between the goal and zero
-        
-            # Change linear velocity depending on proportional control
-                # GOAL:  
-
-        #if (data.ranges[0] == 0.0 or data.ranges[0] >= distance):
-        #    # Go forward if not close enough to wall.
-        #    self.twist.linear.x = 0.1
-        #else:
-        #    # Close enough to wall, stop.
-        #    self.twist.linear.x = 0
-
-        # Publish msg to cmd_vel.
-        #self.twist_pub.publish(self.twist)
 
 
     def run(self):
