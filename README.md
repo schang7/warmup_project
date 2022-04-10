@@ -20,13 +20,24 @@ The node is defined in the class `DriveSquare`, which contains the following fun
 ![](https://github.com/schang7/warmup_project/blob/851ee79972db51cb5c71b61d9367554a4b457123/drive_square.GIF)
 
 ## Challenges
-Some challenges for this first benchmark was just figuring out how to use rospy.spin() and also keep the periodic turning callback function running to have the robot continuously drive in a square path. I think reading up on how ROS runs nodes and learning about potential issues like race conditions helped me in conceptualizing how to solve these challenges.
+Some challenges for the first `drive_square` benchmark was just figuring out how to use rospy.spin() and also keep the periodic turning callback function running to have the robot continuously drive in a square path. I think reading up on how ROS runs nodes and learning about potential issues like race conditions helped me in conceptualizing how to solve these challenges.
+
+A challenge that I faced coding `person_follower` and `wall_follower` was handling noisy measurements from the scan data, since robots movements based on noisy measurements would be very jittery or incorrect. I overcame this challenge by averaging out distance measurements across slices of angles in 360 degrees space and basing my angular movement commands on averaged distance measurements.
+
+Another challenge that I faced coding `wall_follower` was just trying to reason through all the different edge cases for encountering and following a wall. I overcame this challenge by drawing out a lot of the potential walls/corners that a robot could encounter and thinking about how the robot should move in each of those scenarios. 
 
 ## Future Work
-If I had more time I would like to set maybe different conditions (maybe based on user input when the program starts running) to specify in what direction we want the robot to drive in the square path. Would also like to experiment with the /odom topic as well.
+If I had more time with the `drive_square` behavior I would like to set maybe different conditions (maybe based on user input when the program starts running) to specify in what direction we want the robot to drive in the square path. I would also like to experiment with the /odom topic as well.
+
+If I had more time with the `person_follower` behavior I'd like to figure out how it's possible to make the robot specifically follow a person-like object instead of using the closest obstacle as a proxy for the person. I'd also like to make the movements more smooth and further fine tune the reduction of noise (through my slicing) in the ranges measurements. 
+
+If I had more time with the `wall_follower` it would be to ______.
 
 ## Takeaways
-Overall this first part of the project helped me get more comfortable with how to setup and run a ROS node and how to navigate the ROS wiki for any resources. It also gave me practice with object oriented programming in Python, which will help in future assignments. 
+ 
+- Overall, this project helped me get more comfortable with how to setup and run a ROS node and how to navigate the ROS wiki for any resources. It also gave me practice with object oriented programming in Python, which will help in future assignments. 
+- This project also gave me a lot of practice with uses of proportional control. I became increasingly proficient at figuring out what are the goal or current states for different forms of angular or linear movement. Using this skill will be key to helping me program future robot behaviors with sensorimotor control.
+- I also got a lot of experience thinking about handling noisy measurements in real life situations. After writing up stuff in simulation, I realized how different it is when trying it on the physical turtlebots. Therefore, I practice in thinking about how to implement more robust code to handle these situations, which will be crucial in programming more robot behavior in real life scenarios.
 
 
 
