@@ -14,7 +14,6 @@ from sensor_msgs.msg import LaserScan
 from geometry_msgs.msg import Twist
 from geometry_msgs.msg import Vector3
 
-
 class PersonFollower(object):
     """ This node finds a person and follows them around """
 
@@ -36,120 +35,105 @@ class PersonFollower(object):
         )
 
         # A default distance that the robot should keep from the person
-        self.goal_following_dist = 0.3 # in meters
+        self.goal_following_dist = 0.2 # in meters
 
     def follow_person(self, data):
-        # Detect a person within the range of the robot using the scan data from
-        # everywhere around the robot, turn towards that detected individual, then 
-        # follow them around. The robot should also stop at a distance away from the person
-        # so as not to get too close. 
+        '''
+        Detect a person within the range of the robot using the scan data from
+        everywhere around the robot (the person is assumed to be the closest detected obstacle), 
+        turn towards that detected individual, then follow them around. 
+        The robot should also stop at a distance away from the person so as not to get too close. 
 
-        # CHANGE SO THAT IT's MORE ME
-        # The ranges field in the scan data is a list of 360 degrees in the LiDAR scan;  each number
-        # corresponds to the distance to the closest obstacle from the LiDAR.
+        The ranges field in the scan data is a list of 360 degrees in the LiDAR scan;  each number
+        in the list corresponds to the distance to the closest obstacle from the LiDAR.
         
-        # ranges[0] corresponds with what is directly in front of the robot, and as index to ranges
-        # increases it is a 
+        ranges[0] corresponds with what is directly in front of the robot, and as index to ranges
+        increases by one it is a single degree in the counterclockwise direction.
+        '''
 
-        # IF PERSON IS DETECTED
-            # go towards the angle with a range that is greater than self.distance but
-            # has the minimum range ; in addition, it shouldn't be zero
-        
-        # Find all nonzero values
+        # FIRST, we want to identify at what angle relative to the robot the person is located.
         ranges = np.asarray(data.ranges)
+        # Determine which angles in the ranges vector are detecting something at a nonzero distance
         nonzero_distances = np.logical_and(np.isfinite(ranges), ranges > 0)
-        # Checking if everything in the LiDAR scan range is equal to inf or 0 
-        # (in simulation)
         print(nonzero_distances)
-        if sum(nonzero_distances) == 0:
-            print('nothing is in range')
+        # If nothing in the LiDAR range is at a nonzero distance, then stop moving
+        if sum(nonzero_distances) == 0: 
             # If so, then just stay still
             self.movement.linear.x = 0
             self.movement.angular.z = 0
+        # Otherwise, determine where the person is located so that the robot can turn towards them
         else:
-            # Let's tile up the set of angles into sets of 20 degrees, so that we are not basing our angular direction command
-            # on a single measurement
-            ranges[ranges == 0.0] = np.nan
-            tile_up_by = int(20) # in degrees
-            # goal angle is halfway in each pie slice
-            possible_goals = [0, 20, 40, 60, 80, 100, 120, 140, 160, 180, -160, -140, -120, -100, -80, -60, -40, -20]
-            #possible_goals = [0,10,20,30,40,50,60,70,80,90,100,110,120,130,140,150,160,170,180,-170,-160,-150,-140,-130,-120,-110,-100,-90,-80,-70,-60,-50,-40,-30,-20,-10]
-            slice_means = []
-            num_slice_elements = []
+            # Let's tile up the 360 degree set of angles into slices of size 20 degrees, 
+            # and see which 'slice' the person is closest to so that we are not basing ultimate 
+            # angular direction commands on measurements from a noisy, single angle 
+            slice_size = int(20) # in degrees
 
-            print(len(ranges))
-            for s in range(int(len(ranges)/tile_up_by)):
+            # Initialize a vector that will hold the mean distance of environmental elements
+            # from the range of angles in each slice
+            slice_means = [] 
+
+            # Set all the 0.0s (no detection) to NaN values so that we can take the 
+            # mean distance of the slice without including 0.0s
+            ranges[ranges == 0.0] = np.nan 
+
+            # Iterate over all number of slices
+            for s in range(int(len(ranges)/slice_size)):
+                # Special case for the first slice, which needs to combine samples
+                # from 0-10 degrees and 350-360 degrees (which are on opposite sides of the ranges vector)
                 if s == 0:
-                    first_half = slice(0,int(tile_up_by/2))
-                    second_half = slice(int(-tile_up_by/2),0)
-                    elements_in_slice = sum(nonzero_distances[:int(tile_up_by/2)]) + sum(nonzero_distances[-1*int(tile_up_by/2):])
-                    
-                    slice_mean = np.nanmean(np.append(ranges[:int((tile_up_by/2))],ranges[int((-tile_up_by/2)):]))
-                    
+                    first_half_angles = slice(0,int(slice_size/2))
+                    second_half_angles = slice(int(-slice_size/2),0)
+                    # Get the mean of the distances for all angles in the slice, disregarding NaNs (no detection)
+                    slice_mean = np.nanmean(np.append(ranges[first_half_angles],ranges[second_half_angles]))
                 else:
-                    offset = tile_up_by/2
-                    slice_idx = slice(int(offset + ((s-1)*tile_up_by)), int(offset + (s*tile_up_by)))
-                    elements_in_slice = sum(nonzero_distances[slice_idx])
-                    slice_mean = np.nanmean(ranges[slice_idx])
-                    
+                    # Subsequent slices start from 10 degrees, so need to define slices offset by this amount
+                    offset = slice_size/2
+                    slice_angles = slice(int(offset + ((s-1)*slice_size)), int(offset + (s*slice_size)))
+                    slice_mean = np.nanmean(ranges[slice_angles])
 
-                num_slice_elements.append(elements_in_slice)
                 slice_means.append(slice_mean)
-            print(num_slice_elements)
-            print(slice_means)
-            #candidate_slices = np.flatnonzero(num_slice_elements == np.max(num_slice_elements))
-            #candidate_slices = num_slice_elements
-            #if len(candidate_slices) != 1:
-            #    smallest_distance = 1000
-            #    for i in candidate_slices:
-            #        if slice_means[i] < smallest_distance:
-            #            slice_with_most_detection = i
-            #            smallest_distance = slice_means[i]
-            #else:
-            #    slice_with_most_detection = candidate_slices
-            slice_with_most_detection = np.nanargmin(slice_means)
-            smallest_distance = slice_means[slice_with_most_detection]
             
-            # this should be the mean for that given slice, but increase the k-value for the proportional control
-            smallest_angle = possible_goals[slice_with_most_detection]
-            # 10 to -10
-            # -10 to -30, +10 to +30
-            # 30 to 50, 50 to 70, 70 to 90, 90 to 110, 110 to 130, 130 to 150, 150 to 170
-            # 170 to -170
-            # and so on until...
-            # 170 to 180, -170 to -180
-            # whichever has the greatest value, we set the goal angular velocity to the center
+            print(slice_means)
 
-            # Angle the robot in the direction of the closest object, still nonzero
-            #smallest_distance = np.min(ranges[nonzero_distances])
-            #smallest_angle = np.where(ranges == smallest_distance)[0][0]
-            print('smallest angle: ' + str(smallest_angle))
+            # If a person is closest to a given slice, we want the robot to move towards the 
+            # angle at the *center* of that slice. Candidate goal angles are relative to the front of the robot (0 degrees). 
+            # Positive angles are counterclockwise from the front, negative angles are clockwise from the front.
+            candidate_goal_angles = [0, 20, 40, 60, 80, 100, 120, 140, 160, 180, -160, -140, -120, -100, -80, -60, -40, -20]
+            #candidate_goal_angles = [0,10,20,30,40,50,60,70,80,90,100,110,120,130,140,150,160,170,180,-170,-160,-150,-140,-130,-120,-110,-100,-90,-80,-70,-60,-50,-40,-30,-20,-10]
 
-            # If the person is on the right side of the robot, we want to rotate right.
-            # If the person is on the left side of the robot, we want it rotate left.
-            # If it is within a range of values direction behind the robot (+/- 5 degrees from 180 degrees), 
-            # we define that it will rotate left until it reaches that destination 
-            # (to reduce the chance of noise impacting the angular movement decision)
-            angle_error = smallest_angle
+            # We'll define the algorithm so that the robot follows the closest thing 
+            # in its range (where the person is assumed to be in this situation)
+            slice_facing_person = np.nanargmin(slice_means)
+            
+            distance_to_person = slice_means[slice_facing_person]
+            angle_of_person = candidate_goal_angles[slice_facing_person]
 
-            angle_k = 0.05
-                        
-            self.movement.angular.z = angle_k * angle_error
+            # Angle the robot in the direction of the closest object, 
+            print('angle of person: ' + str(angle_of_person))
+
+            # Proportional control for angular motion to orient the robot so that
+            # the front of the robot (0 degrees) reaches the goal of the angle the person is located.
+            # If the person is on the right side of the robot, it rotates right.
+            # If the person is on the left side of the robot, it rotates left.
+            angle_error = angle_of_person
+            angle_k_val = 0.01
+            self.movement.angular.z = angle_k_val * angle_error
             print("angular_accel: " + str(self.movement.angular.z)) 
-            dist_error = smallest_distance - self.goal_following_dist
-            print("smallest_dist: " + str(smallest_distance))
-            print("error: " + str(dist_error))
-            dist_k = 0.75
-            self.movement.linear.x = dist_k * dist_error
-            print("linear move: " + str(self.movement.linear.x)) 
+
+            # Proportional control for linear motion to make the robot
+            # move to the person at a set following distance
+            dist_error = distance_to_person - self.goal_following_dist
+            dist_k_val = 0.2
+            self.movement.linear.x = dist_k_val * dist_error
+            print("linear_accel: " + str(self.movement.linear.x)) 
+
         self.movement_pub.publish(self.movement)
 
-
     def run(self):
-        # Keep the program alive.
+        # Keep the program running
         rospy.spin()
 
 if __name__ == '__main__':
-    # Declare a node and run it.
+    # Declaring a node and then running it
     node = PersonFollower()
     node.run()

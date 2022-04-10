@@ -14,9 +14,8 @@ from sensor_msgs.msg import LaserScan
 from geometry_msgs.msg import Twist
 from geometry_msgs.msg import Vector3
 
-
 class WallFollower(object):
-    """ This node finds a wall and follows them around """
+    """ This node finds a wall and follows along it """
 
     def __init__(self):
         # Initializing the ROS node
@@ -36,116 +35,94 @@ class WallFollower(object):
         )
 
         # A default distance that the robot should keep from the wall
-        self.goal_following_dist = 0.25 # in meters
+        self.goal_following_dist = 0.35 # in meters
 
     def follow_wall(self, data):
-        # Detect a wall within the range of the robot using the scan data from
-        # everywhere around the robot, go towards that wall, then 
-        # follow it. The robot should follow at a distance away from the wall
-        # so as not to get too close. 
+        '''
+        Moves the robot, and detects when it comes near contact with a wall robot using the scan data from
+        everywhere around the robot. Once it reaches the wall it follows alongside the wall at an approximate
+        set distance by changing the angular acceleration to minimizes the distance of the left side of the robot
+        to the wall. 
 
-        # CHANGE SO THAT IT's MORE ME
-        # The ranges field in the scan data is a list of 360 degrees in the LiDAR scan;  each number
-        # corresponds to the distance to the closest obstacle from the LiDAR.
+        The ranges field in the scan data is a list of 360 degrees in the LiDAR scan;  each number
+        in the list corresponds to the distance to the closest obstacle from the LiDAR.
         
-        # ranges[0] corresponds with what is directly in front of the robot, and as index to ranges
-        # increases it is a 
-        
-        # Find all nonzero values
+        ranges[0] corresponds with what is directly in front of the robot, and as index to ranges
+        increases by one it is a single degree in the counterclockwise direction.
+        '''
+        # FIRST, make the robot move forward until it finds a wall
+        self.movement.linear.x = 0.1
+
+        # NEXT, we want to identify where any obstacles (e.g. a wall) is located relative to the robot.
         ranges = np.asarray(data.ranges)
-        nonzero_distances = np.logical_and(np.isfinite(ranges), ranges > 0)
-        # Checking if everything in the LiDAR scan range is equal to inf or 0 
-        # (in simulation)
-        print(nonzero_distances)
-        if sum(nonzero_distances) == 0:
-            print('nothing is in range')
-            # If so, then just stay still
-            self.movement.linear.x = 0
-            self.movement.angular.z = 0
-        else:
-            # Let's tile up the set of angles into sets of 20 degrees, so that we are not basing our angular direction command
-            # on a single measurement
-            ranges[ranges == 0.0] = np.nan
-            tile_up_by = int(20) # in degrees
-            # goal angle is halfway in each pie slice
-            possible_goals = [10, 30, 50, 70, 90, 110, 130, 150, 170, -170, -150, -130, -110, -90, -70, -50, -30, -10]
-            #possible_goals = [0,10,20,30,40,50,60,70,80,90,100,110,120,130,140,150,160,170,180,-170,-160,-150,-140,-130,-120,-110,-100,-90,-80,-70,-60,-50,-40,-30,-20,-10]
-            slice_means = []
-            num_slice_elements = []
 
-            print(len(ranges))
-            for s in range(int(len(ranges)/tile_up_by)):
-                offset = 0 
-                slice_idx = slice(int(offset + (s*tile_up_by)), int(offset + ((s+1)*tile_up_by)))
-                elements_in_slice = sum(nonzero_distances[slice_idx])
-                slice_mean = np.nanmean(ranges[slice_idx])
-                    
-                num_slice_elements.append(elements_in_slice)
-                slice_means.append(slice_mean)
-            print(num_slice_elements)
-            print(slice_means)
-            #candidate_slices = np.flatnonzero(num_slice_elements == np.max(num_slice_elements))
-            #candidate_slices = num_slice_elements
-            #if len(candidate_slices) != 1:
-            #    smallest_distance = 1000
-            #    for i in candidate_slices:
-            #        if slice_means[i] < smallest_distance:
-            #            slice_with_most_detection = i
-            #            smallest_distance = slice_means[i]
-            #else:
-            #    slice_with_most_detection = candidate_slices
-            slice_with_most_detection = np.nanargmin(slice_means)
-            smallest_distance = slice_means[slice_with_most_detection]
+        # Let's tile up the 360 degree set of angles into slices of size 20 degrees, 
+        # and see which 'slice' has obstacles closest to the robot (so that we are not basing ultimate 
+        # angular direction commands on measurements from a noisy, single angle)
+        slice_size = int(20) # in degrees
+
+        # Initialize a vector that will hold the mean distance of environmental elements
+        # from the range of angles in each slice
+        slice_means = [] 
+
+        # Set all the 0.0s (no detection) to NaN values so that we can take the 
+        # mean distance of the slice without including 0.0s
+        ranges[ranges == 0.0] = np.nan 
+
+        # Iterate over all number of slices
+        for s in range(int(len(ranges)/slice_size)):
+            # Each slice is from 0-20 degrees, 20-40 degrees, etc.
+            slice_angles = slice(int(s*slice_size), int((s+1)*slice_size))
+            slice_mean = np.nanmean(ranges[slice_angles])
+                
+            slice_means.append(slice_mean)
+        print(slice_means)
+
+        # If obstacles are closest within a given slice, we want the robot to receive movement commands based on the 
+        # angle at the *center* of that slice. Candidate goal angles are relative to the front of the robot (0 degrees). 
+        # Positive angles are counterclockwise from the front, negative angles are clockwise from the front.
+        candidate_goal_angles = [10, 30, 50, 70, 90, 110, 130, 150, 170, -170, -150, -130, -110, -90, -70, -50, -30, -10]
+        #possible_goals = [0,10,20,30,40,50,60,70,80,90,100,110,120,130,140,150,160,170,180,-170,-160,-150,-140,-130,-120,-110,-100,-90,-80,-70,-60,-50,-40,-30,-20,-10]
+
+        closest_slice = np.nanargmin(slice_means)
+        
+        closest_distance = slice_means[closest_slice]
+        closest_angle = candidate_goal_angles[closest_slice]
+        
+        print('closest angle: ' + str(closest_angle))
+
+        # Proportional control for angular motion to orient the robot so that
+        # the left side of the robot (90 degrees) should become the closest to the obstacle (the wall)
+        angle_error = closest_angle - 90
+        angle_k_val = 0.02
+
+        # Handling different wall-contact cases:
+        # When approaching the wall, if the closest distance to the wall
+        # is less than the goal_following_dist then you need to turn to avoid a collision; 
+        # this condition works when approaching a wall for the first time or turning inside
+        # corners (e.g. in a square room)
+        if closest_distance < self.goal_following_dist: 
+            self.movement.angular.z = angle_k_val * angle_error
             
-            # this should be the mean for that given slice, but increase the k-value for the proportional control
-            smallest_angle = possible_goals[slice_with_most_detection]
+        if closest_distance < self.goal_following_dist and closest_angle != 90:
+            self.movement.linear.x = 0
+        # If you have been following a wall but are starting to move away from it (e.g. at an
+        # outside corner) so that the left side is no longer closest to the wall, you need to turn 
+        elif closest_distance > self.goal_following_dist and closest_angle > 90:
+            self.movement.angular.z = angle_k_val * angle_error  
+        # Do not turn if you are still finding a wall or in the process of following a wall  
+        else:
+            self.movement.angular.z = 0 
 
-            # Angle the robot such that the 
-            #smallest_distance = np.min(ranges[nonzero_distances])
-            #smallest_angle = np.where(ranges == smallest_distance)[0][0]
-            print('smallest angle: ' + str(smallest_angle))
-
-            # If the person is on the right side of the robot, we want to rotate right.
-            # If the person is on the left side of the robot, we want it rotate left.
-            # If it is within a range of values direction behind the robot (+/- 5 degrees from 180 degrees), 
-            # we define that it will rotate left until it reaches that destination 
-            # (to reduce the chance of noise impacting the angular movement decision)
-            angle_error = smallest_angle - 90
-
-            angle_k = 0.05
-
-            # we've run into a wall and are following it now
-
-            if smallest_distance < self.goal_following_dist: 
-                print("went into smallest_dist")
-                self.movement.angular.z = angle_k * angle_error
-             
-            # we're pulling away from a wall
-            elif smallest_distance > self.goal_following_dist and smallest_angle > 90:
-                self.movement.angular.z = angle_k * angle_error    
-            else:
-                self.movement.angular.z = 0 
-
-            print("angular_accel: " + str(self.movement.angular.z)) 
-            dist_error = smallest_distance - self.goal_following_dist
-            #print("smallest_dist: " + str(smallest_distance))
-            #print("dist_error: " + str(dist_error))
-            dist_k = 0.5
-            #self.movement.linear.x = 0.1
-            self.movement.linear.x = 0.1
-            print("linear move: " + str(self.movement.linear.x)) 
+        print("angular_accel: " + str(self.movement.angular.z)) 
+        print("linear_accel: " + str(self.movement.linear.x))
         self.movement_pub.publish(self.movement)
 
     def run(self):
-        # Keep the program alive.
+        # Keep the program running
         rospy.spin()
 
 if __name__ == '__main__':
-    # Declare a node and run it.
+    # Declaring a node and then running it
     node = WallFollower()
     node.run()
-
-
-
-
-
