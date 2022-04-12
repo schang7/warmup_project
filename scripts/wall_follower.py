@@ -41,8 +41,8 @@ class WallFollower(object):
         '''
         Moves the robot, and detects when it comes near contact with a wall robot using the scan data from
         everywhere around the robot. Once it reaches the wall it follows alongside the wall at an approximate
-        set distance by changing the angular acceleration to minimizes the distance of the left side of the robot
-        to the wall. 
+        set distance by changing the angular acceleration to minimize the distance of the left side of the robot
+        from the wall. 
 
         The ranges field in the scan data is a list of 360 degrees in the LiDAR scan;  each number
         in the list corresponds to the distance to the closest obstacle from the LiDAR.
@@ -100,7 +100,7 @@ class WallFollower(object):
         # corners (e.g. in a square room)
         if closest_distance < self.goal_following_dist: 
             self.movement.angular.z = angle_k_val * angle_error
-        # Don't move forward while this above turn is happening; this helps a bit with preventing collisions    
+        # Don't move forward while this turn is happening; this helps a bit with preventing collisions    
         if closest_distance < self.goal_following_dist and closest_angle != 90:
             self.movement.linear.x = 0
         # If you have been following a wall but are starting to move away from it (e.g. at an
