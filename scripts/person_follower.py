@@ -35,7 +35,7 @@ class PersonFollower(object):
         )
 
         # A default distance that the robot should keep from the person
-        self.goal_following_dist = 0.2 # in meters
+        self.goal_following_dist = 0.2
 
     def follow_person(self, data):
         '''
@@ -55,7 +55,6 @@ class PersonFollower(object):
         ranges = np.asarray(data.ranges)
         # Determine which angles in the ranges vector are detecting something at a nonzero distance
         nonzero_distances = np.logical_and(np.isfinite(ranges), ranges > 0)
-        print(nonzero_distances)
         # If nothing in the LiDAR range is at a nonzero distance, then stop moving
         if sum(nonzero_distances) == 0: 
             # If so, then just stay still
@@ -92,14 +91,11 @@ class PersonFollower(object):
                     slice_mean = np.nanmean(ranges[slice_angles])
 
                 slice_means.append(slice_mean)
-            
-            print(slice_means)
 
             # If a person is closest to a given slice, we want the robot to move towards the 
             # angle at the *center* of that slice. Candidate goal angles are relative to the front of the robot (0 degrees). 
             # Positive angles are counterclockwise from the front, negative angles are clockwise from the front.
             candidate_goal_angles = [0, 20, 40, 60, 80, 100, 120, 140, 160, 180, -160, -140, -120, -100, -80, -60, -40, -20]
-            #candidate_goal_angles = [0,10,20,30,40,50,60,70,80,90,100,110,120,130,140,150,160,170,180,-170,-160,-150,-140,-130,-120,-110,-100,-90,-80,-70,-60,-50,-40,-30,-20,-10]
 
             # We'll define the algorithm so that the robot follows the closest thing 
             # in its range (where the person is assumed to be in this situation)
@@ -108,9 +104,6 @@ class PersonFollower(object):
             distance_to_person = slice_means[slice_facing_person]
             angle_of_person = candidate_goal_angles[slice_facing_person]
 
-            # Angle the robot in the direction of the closest object, 
-            print('angle of person: ' + str(angle_of_person))
-
             # Proportional control for angular motion to orient the robot so that
             # the front of the robot (0 degrees) reaches the goal of the angle the person is located.
             # If the person is on the right side of the robot, it rotates right.
@@ -118,14 +111,12 @@ class PersonFollower(object):
             angle_error = angle_of_person
             angle_k_val = 0.01
             self.movement.angular.z = angle_k_val * angle_error
-            print("angular_accel: " + str(self.movement.angular.z)) 
 
             # Proportional control for linear motion to make the robot
             # move to the person at a set following distance
             dist_error = distance_to_person - self.goal_following_dist
             dist_k_val = 0.2
-            self.movement.linear.x = dist_k_val * dist_error
-            print("linear_accel: " + str(self.movement.linear.x)) 
+            self.movement.linear.x = dist_k_val * dist_error 
 
         self.movement_pub.publish(self.movement)
 

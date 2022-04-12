@@ -35,7 +35,7 @@ class WallFollower(object):
         )
 
         # A default distance that the robot should keep from the wall
-        self.goal_following_dist = 0.35 # in meters
+        self.goal_following_dist = 0.38
 
     def follow_wall(self, data):
         '''
@@ -76,20 +76,17 @@ class WallFollower(object):
             slice_mean = np.nanmean(ranges[slice_angles])
                 
             slice_means.append(slice_mean)
-        print(slice_means)
 
         # If obstacles are closest within a given slice, we want the robot to receive movement commands based on the 
         # angle at the *center* of that slice. Candidate goal angles are relative to the front of the robot (0 degrees). 
         # Positive angles are counterclockwise from the front, negative angles are clockwise from the front.
         candidate_goal_angles = [10, 30, 50, 70, 90, 110, 130, 150, 170, -170, -150, -130, -110, -90, -70, -50, -30, -10]
-        #possible_goals = [0,10,20,30,40,50,60,70,80,90,100,110,120,130,140,150,160,170,180,-170,-160,-150,-140,-130,-120,-110,-100,-90,-80,-70,-60,-50,-40,-30,-20,-10]
 
         closest_slice = np.nanargmin(slice_means)
         
         closest_distance = slice_means[closest_slice]
         closest_angle = candidate_goal_angles[closest_slice]
         
-        print('closest angle: ' + str(closest_angle))
 
         # Proportional control for angular motion to orient the robot so that
         # the left side of the robot (90 degrees) should become the closest to the obstacle (the wall)
@@ -103,7 +100,7 @@ class WallFollower(object):
         # corners (e.g. in a square room)
         if closest_distance < self.goal_following_dist: 
             self.movement.angular.z = angle_k_val * angle_error
-            
+        # Don't move forward while this above turn is happening; this helps a bit with preventing collisions    
         if closest_distance < self.goal_following_dist and closest_angle != 90:
             self.movement.linear.x = 0
         # If you have been following a wall but are starting to move away from it (e.g. at an
@@ -114,8 +111,6 @@ class WallFollower(object):
         else:
             self.movement.angular.z = 0 
 
-        print("angular_accel: " + str(self.movement.angular.z)) 
-        print("linear_accel: " + str(self.movement.linear.x))
         self.movement_pub.publish(self.movement)
 
     def run(self):
