@@ -2,7 +2,7 @@
 
 # TOPICS:
 #   cmd_vel: publish to, used for setting robot velocity
-#   scan   : subscribing, where the wall is
+#   scan   : subscribing, where the person is
 
 import rospy
 import numpy as np
