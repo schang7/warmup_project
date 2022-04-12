@@ -40,6 +40,7 @@ Both these angular and linear acceleration commands are finally pushed to the
 
 ### Gif of movement:
 
+![](https://github.com/schang7/warmup_project/blob/7c73a98a3588d76bc39d0e3232fc01c1817fcf7a/gifs/person_follower.GIF)
 
 ## Wall follower
 
@@ -65,6 +66,14 @@ Movement controls are set based on these different conditions and published for 
 
 ### Gif of movement:
 
+PART 1:
+
+![](https://github.com/schang7/warmup_project/blob/7c73a98a3588d76bc39d0e3232fc01c1817fcf7a/gifs/wall_follower_part_1.GIF)
+
+PART 2:
+
+![](https://github.com/schang7/warmup_project/blob/7c73a98a3588d76bc39d0e3232fc01c1817fcf7a/gifs/wall_follower_part_2.GIF)
+
 
 ## Challenges
 Some challenges for the first `drive_square` benchmark was just figuring out how to use rospy.spin() and also keep the periodic turning callback function running to have the robot continuously drive in a square path. I think reading up on how ROS runs nodes and learning about potential issues like race conditions helped me in conceptualizing how to solve these challenges.
@@ -76,9 +85,9 @@ Another challenge that I faced coding `wall_follower` was just trying to reason 
 ## Future Work
 If I had more time with the `drive_square` behavior I would like to set maybe different conditions (maybe based on user input when the program starts running) to specify in what direction we want the robot to drive in the square path. I would also like to experiment with the /odom topic as well.
 
-If I had more time with the `person_follower` behavior I'd like to figure out how it's possible to make the robot specifically follow a person-like object instead of using the closest obstacle as a proxy for the person. I'd also like to make the movements more smooth and further fine tune the reduction of noise (through my slicing) in the ranges measurements. 
+If I had more time with the `person_follower` behavior I'd like to figure out how it's possible to make the robot specifically follow a person-like object instead of using the closest obstacle as a proxy for the person. I'd also like to make the movements more smooth while also being faster and further fine tune the reduction of noise (through my slicing) in the ranges measurements. 
 
-If I had more time with the `wall_follower` it would be to make it a more smooth turning manuever (doing more experimentation with k-values or adding more conditions) because the way that I have set up my conditions makes the robot a little jerky sometimes with the turning, while it does properly follow walls.
+If I had more time with the `wall_follower` it would be to make it a more smooth turning manuever (doing more experimentation with k-values or adding more conditions) because the way that I have set up my conditions makes the robot a little jerky sometimes with the turning, while it does properly follow walls. While it also does really well with square walls with very nice boundaries sometimes with more acute inside angle corners it can get close to the wall (graze it) or sometimes get too far away from the wall after outside acute angle corners. I think I would improve the way that the goal following distance from the wall is regulated, maybe with some non-constant linear acceleration modulations.
 
 ## Takeaways
  
